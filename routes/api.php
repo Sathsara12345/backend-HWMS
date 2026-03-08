@@ -8,14 +8,10 @@ use App\Http\Controllers\AdminDashboardController;
 Route::post('/login', [AuthController::class , 'login']);
 
 Route::middleware(['auth:api'])->group(function () {
-    Route::get('/me', function () {
-            return auth('api')->user();
-        }
-        );
+    Route::get('/me', function () { return auth('api')->user();});
 
-        // Admin routes
-        Route::middleware(['role:super-admin|admin'])->prefix('admin')->group(function () {
-            Route::get('/dashboard', [AdminDashboardController::class , 'index']);
-        }
-        );
+    // Admin routes
+    Route::middleware(['role:super-admin|admin'])->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class , 'index']);
     });
+});
