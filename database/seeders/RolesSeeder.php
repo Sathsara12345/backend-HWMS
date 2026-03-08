@@ -21,12 +21,12 @@ class RolesSeeder extends Seeder
         $superAdminRole = Role::create(['name' => 'super-admin', 'guard_name' => 'api']);
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'api']);
 
-        // Create a default Super Admin user (optional, just for setup)
+        // Create a default Super Admin user
         $superAdmin = User::firstOrCreate([
             'email' => 'superadmin@hotel.com'
         ], [
-            'name' => 'Super Administrator',
-            'password' => bcrypt('password123'),
+            'name' => 'Super Admin',
+            'password' => bcrypt('devnex1+'),
         ]);
 
         if (!$superAdmin->hasRole('super-admin')) {

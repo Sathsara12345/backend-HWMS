@@ -24,14 +24,11 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // 2. Create Roles and assign permissions
         $superAdmin = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'api']);
-        $superAdmin->syncPermissions(Permission::all()); // gets everything
+        $superAdmin->syncPermissions(Permission::all());
 
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
         $admin->syncPermissions([
             'view-dashboard',
-            'manage-users',
-            'create-user',
-            'edit-user',
-        ]); // no delete, no manage-roles
+        ]);
     }
 }
