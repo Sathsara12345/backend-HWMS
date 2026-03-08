@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Responses\ApiResponse;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class LoginRequest extends FormRequest
 {
@@ -11,7 +14,6 @@ class LoginRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Allow all users to attempt login
         return true;
     }
 
@@ -23,8 +25,13 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
+            'name' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(ApiResponse::error('Validation Failed', 422, $validator->errors()->toArray()));
     }
 }
