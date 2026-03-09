@@ -6,6 +6,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\SuperAdminRegController;
 
 // Login
 Route::post('/login', [AuthController::class , 'login']);
@@ -24,6 +25,15 @@ Route::prefix('v1')->group(function () {
             Route::post('roles/{role}/assign-permissions', [RoleController::class, 'assignPermissions']);
             Route::apiResource('permissions', PermissionController::class);
             Route::apiResource('users', UserController::class);
+        });
+
+        Route::middleware(['auth:api', 'role:super-admin'])->prefix('admin')->group(function () {
+            Route::get('/dashboard',        [SuperAdminRegController::class, 'index']);
+            Route::get('/admins',           [SuperAdminRegController::class, 'index']);
+            Route::get('/admins/{id}',      [SuperAdminRegController::class, 'show']);
+            Route::post('/admins',          [SuperAdminRegController::class, 'store']);
+            Route::put('/admins/{id}',      [SuperAdminRegController::class, 'update']);
+            Route::delete('/admins/{id}',   [SuperAdminRegController::class, 'destroy']);
         });
     });
 });

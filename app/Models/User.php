@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\Hotel;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -42,6 +43,10 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+        public function hotel()
+    {
+        return $this->hasOne(Hotel::class);
     }
 
     protected function casts(): array
