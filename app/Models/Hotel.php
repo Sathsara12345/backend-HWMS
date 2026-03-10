@@ -6,10 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Hotel extends Model
 {
-    protected $fillable = [
-        'user_id', 'hotel_name', 'domain',
-        'email', 'phone', 'status'
-    ];
+    protected $guarded = [];
 
     // hotel belongs to a user (the admin account)
     public function user()
