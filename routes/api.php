@@ -1,10 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\PermissionController;
+
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\AccessControl\RoleController;
+use App\Http\Controllers\UserManagement\UserController;
+use App\Http\Controllers\AccessControl\PermissionController;
+
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\SuperAdminRegController;
 
