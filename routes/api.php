@@ -8,7 +8,7 @@ use App\Http\Controllers\UserManagement\UserController;
 use App\Http\Controllers\AccessControl\PermissionController;
 
 use App\Http\Controllers\AdminDashboardController;
-use App\Http\Controllers\SuperAdminRegController;
+use App\Http\Controllers\MerchantManagement\MerchantController;
 
 // Login
 Route::post('/login', [AuthController::class , 'login']);
@@ -29,13 +29,12 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('users', UserController::class);
         });
 
-        Route::middleware(['auth:api', 'role:super-admin'])->prefix('admin')->group(function () {
-            Route::get('/dashboard',        [SuperAdminRegController::class, 'index']);
-            Route::get('/admins',           [SuperAdminRegController::class, 'index']);
-            Route::get('/admins/{id}',      [SuperAdminRegController::class, 'show']);
-            Route::post('/admins',          [SuperAdminRegController::class, 'store']);
-            Route::put('/admins/{id}',      [SuperAdminRegController::class, 'update']);
-            Route::delete('/admins/{id}',   [SuperAdminRegController::class, 'destroy']);
+        Route::middleware(['auth:api', 'role:super-admin'])->prefix('super-admin')->group(function () {
+            Route::get('/merchants', [MerchantController::class, 'index']);
+            Route::get('/merchants/{id}', [MerchantController::class, 'show']);
+            Route::post('/merchants', [MerchantController::class, 'store']);
+            Route::put('/merchants/{id}', [MerchantController::class, 'update']);
+            Route::delete('/merchants/{id}', [MerchantController::class, 'destroy']);
         });
     });
 });
