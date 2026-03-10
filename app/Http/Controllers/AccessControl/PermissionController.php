@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use App\Http\Resources\AccessControl\PermissionResource;
+use App\Http\Requests\AccessControl\PermissionRequest;
 
 class PermissionController extends Controller
 {
@@ -18,12 +19,8 @@ class PermissionController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(PermissionRequest $request)
     {
-        $request->validate([
-            'name' => 'required|unique:permissions,name',
-        ]);
-
         $permission = Permission::create([
             'name' => $request->name,
             'guard_name' => 'api'
@@ -42,12 +39,8 @@ class PermissionController extends Controller
         ]);
     }
 
-    public function update(Request $request, Permission $permission)
+    public function update(PermissionRequest $request, Permission $permission)
     {
-        $request->validate([
-            'name' => 'required|unique:permissions,name,' . $permission->id,
-        ]);
-
         $permission->update(['name' => $request->name]);
 
         return (new PermissionResource($permission))->additional([

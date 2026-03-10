@@ -8,6 +8,7 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Http\Resources\AccessControl\RoleResource;
 use App\Http\Resources\AccessControl\PermissionResource;
+use App\Http\Requests\AccessControl\RoleRequest;
 
 class RoleController extends Controller
 {
@@ -20,12 +21,8 @@ class RoleController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(RoleRequest $request)
     {
-        $request->validate([
-            'name' => 'required|unique:roles,name',
-        ]);
-
         $role = Role::create([
             'name' => $request->name,
             'guard_name' => 'api'
@@ -44,12 +41,8 @@ class RoleController extends Controller
         ]);
     }
 
-    public function update(Request $request, Role $role)
+    public function update(RoleRequest $request, Role $role)
     {
-        $request->validate([
-            'name' => 'required|unique:roles,name,' . $role->id,
-        ]);
-
         $role->update(['name' => $request->name]);
 
         return (new RoleResource($role))->additional([
