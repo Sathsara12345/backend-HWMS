@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function () {
         // Admin routes
         Route::middleware(['role:super-admin|admin'])->prefix('admin')->group(function () {
             Route::get('/dashboard', [AdminDashboardController::class , 'index']);
+            Route::get('/nav', [NavItemController::class, 'forCurrentUser']);
 
             // Roles and Permissions routes
             Route::apiResource('roles', RoleController::class);
@@ -26,6 +27,7 @@ Route::prefix('v1')->group(function () {
             Route::post('roles/{role}/assign-permissions', [RoleController::class, 'assignPermissions']);
             Route::apiResource('permissions', PermissionController::class);
             Route::apiResource('users', UserController::class);
+            Route::post('/roles/assign-permissions-to-user/{userId}', [RoleController::class, 'assignPermissionsToUser']);
         });
 
         Route::middleware(['auth:api', 'role:super-admin'])->prefix('super-admin')->group(function () {

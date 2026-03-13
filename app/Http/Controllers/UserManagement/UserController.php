@@ -40,7 +40,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        return (new UserResource($user->load('roles')))->additional([
+        return (new UserResource($user->load(['roles', 'permissions'])))->additional([
             'success' => true,
         ]);
     }

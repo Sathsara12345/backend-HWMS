@@ -26,6 +26,7 @@ class UserResource extends JsonResource
                     ];
                 });
             }),
+            'permissions' => PermissionResource::collection($this->whenLoaded('permissions')),
         ];
     }
 }
