@@ -3,23 +3,21 @@
 namespace App\Http\Controllers\UserManagement;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use app\Models\User;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
+use App\Http\Responses\ApiResponse;
 use Spatie\Permission\Models\Permission;
+use App\Http\Requests\UserManagement\RoleRequest;
 use App\Http\Resources\UserManagement\RoleResource;
 use App\Http\Resources\UserManagement\PermissionResource;
-use App\Http\Requests\UserManagement\RoleRequest;
 
 class RoleController extends Controller
 {
     public function index()
     {
         $roles = Role::with('permissions')->get();
-        return RoleResource::collection($roles)->additional([
-            'success' => true,
-            'message' => 'Roles retrieved successfully'
-        ]);
+        return ApiResponse::success(RoleResource::collection($roles), 'Roles retrieved successfully');
     }
 
     public function store(RoleRequest $request)
@@ -29,45 +27,31 @@ class RoleController extends Controller
             'guard_name' => 'api'
         ]);
 
-        return (new RoleResource($role))->additional([
-            'success' => true,
-            'message' => 'Role created successfully'
-        ])->response()->setStatusCode(201);
+        return ApiResponse::success(new RoleResource($role), 'Role created successfully', 201);
     }
 
     public function show(Role $role)
     {
-        return (new RoleResource($role->load('permissions')))->additional([
-            'success' => true,
-        ]);
+        return ApiResponse::success(new RoleResource($role->load('permissions')), 'Role retrieved successfully');
     }
 
     public function update(RoleRequest $request, Role $role)
     {
         $role->update(['name' => $request->name]);
 
-        return (new RoleResource($role))->additional([
-            'success' => true,
-            'message' => 'Role updated successfully'
-        ]);
+        return ApiResponse::success(new RoleResource($role), 'Role updated successfully');
     }
 
     public function destroy(Role $role)
     {
         $role->delete();
-        return response()->json([
-            'success' => true,
-            'message' => 'Role deleted successfully'
-        ]);
+        return ApiResponse::success(null, 'Role deleted successfully');
     }
 
     public function getAllPermissions()
     {
         $permissions = Permission::all();
-        return PermissionResource::collection($permissions)->additional([
-            'success' => true,
-            'message' => 'Permissions retrieved successfully'
-        ]);
+        return ApiResponse::success(PermissionResource::collection($permissions), 'Permissions retrieved successfully');
     }
 
     public function assignPermissions(Request $request, Role $role)
@@ -78,10 +62,7 @@ class RoleController extends Controller
 
         $role->syncPermissions($request->permissions);
 
-        return (new RoleResource($role->load('permissions')))->additional([
-            'success' => true,
-            'message' => 'Permissions assigned successfully'
-        ]);
+        return ApiResponse::success(new RoleResource($role->load('permissions')), 'Permissions assigned successfully');
     }
 
     public function assignPermissionsToUser(Request $request, $userId)
@@ -92,7 +73,7 @@ class RoleController extends Controller
 
     $user = User::find($userId);
     if (!$user) {
-        return response()->json(['error' => 'User not found'], 404);
+        return ApiResponse::error('User not found', 404);
     }
 
     // Sync permissions directly to the user (replaces any existing user-specific permissions)
@@ -101,13 +82,9 @@ class RoleController extends Controller
     // Load permissions for the response (optional, for consistency with role method)
     $user->load('permissions');
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Permissions assigned to user successfully',
-        'data' => [
-            'user_id' => $user->id,
-            'permissions' => PermissionResource::collection($user->permissions),
-        ]
-    ]);
+    return ApiResponse::success([
+        'user_id' => $user->id,
+        'permissions' => PermissionResource::collection($user->permissions),
+    ], 'Permissions assigned to user successfully');
 }
 }

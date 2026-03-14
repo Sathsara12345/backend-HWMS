@@ -8,6 +8,7 @@ use App\Models\Hotel;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Responses\ApiResponse;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\MerchantRequest;
 use App\Http\Resources\MerchantResource;
@@ -20,10 +21,7 @@ class MerchantController extends Controller
     public function index()
     {
         $admins = User::role('admin')->with(['hotel', 'roles'])->get();
-        return MerchantResource::collection($admins)->additional([
-            'success' => true,
-            'message' => 'Merchants retrieved successfully'
-        ]);
+        return ApiResponse::success(MerchantResource::collection($admins), 'Merchants retrieved successfully');
     }
 
     /**
@@ -32,9 +30,7 @@ class MerchantController extends Controller
     public function show($id)
     {
         $admin = User::role('admin')->with(['hotel', 'roles'])->findOrFail($id);
-        return (new MerchantResource($admin))->additional([
-            'success' => true
-        ]);
+        return ApiResponse::success(new MerchantResource($admin), 'Merchant retrieved successfully');
     }
 
     /**
@@ -65,10 +61,7 @@ class MerchantController extends Controller
             ]);
         });
 
-        return (new MerchantResource($merchant->load('hotel', 'roles')))->additional([
-            'success' => true,
-            'message' => 'Merchant created successfully'
-        ])->response()->setStatusCode(201);
+        return ApiResponse::success(new MerchantResource($merchant->load('hotel', 'roles')), 'Merchant created successfully', 201);
     }
 
     /**
@@ -98,10 +91,7 @@ class MerchantController extends Controller
             }
         });
 
-        return (new MerchantResource($admin->fresh()->load('hotel', 'roles')))->additional([
-            'success' => true,
-            'message' => 'Merchant updated successfully'
-        ]);
+        return ApiResponse::success(new MerchantResource($admin->fresh()->load('hotel', 'roles')), 'Merchant updated successfully');
     }
 
     /**
@@ -112,9 +102,6 @@ class MerchantController extends Controller
         $admin = User::role('admin')->findOrFail($id);
         $admin->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Merchant deleted successfully'
-        ]);
+        return ApiResponse::success(null, 'Merchant deleted successfully');
     }
 }
