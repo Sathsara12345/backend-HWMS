@@ -14,13 +14,13 @@ Route::post('/login', [AuthController::class , 'login']);
 
 Route::prefix('v1')->group(function () {
     Route::middleware(['auth:api'])->group(function () {
-        Route::get('/me', function () { return auth('api')->user();});
 
         // Admin routes
         Route::middleware(['role:super-admin|admin'])->prefix('admin')->group(function () {
-            Route::get('/dashboard', [AdminDashboardController::class , 'index']);
-            Route::get('/nav', [NavItemController::class, 'forCurrentUser']);
+            Route::get('/dashboard', [AdminDashboardController::class , 'index']);         
+        });
 
+        Route::middleware(['auth:api', 'role:super-admin'])->prefix('super-admin')->group(function () {
             // Roles and Permissions routes
             Route::apiResource('roles', RoleController::class);
             Route::get('all-permissions', [RoleController::class, 'getAllPermissions']);
@@ -28,9 +28,8 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('permissions', PermissionController::class);
             Route::apiResource('users', UserController::class);
             Route::post('/roles/assign-permissions-to-user/{userId}', [RoleController::class, 'assignPermissionsToUser']);
-        });
 
-        Route::middleware(['auth:api', 'role:super-admin'])->prefix('super-admin')->group(function () {
+            // Merchant routes
             Route::get('/merchants', [MerchantController::class, 'index']);
             Route::get('/merchants/{id}', [MerchantController::class, 'show']);
             Route::post('/merchants', [MerchantController::class, 'store']);
