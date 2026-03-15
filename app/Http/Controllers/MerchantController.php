@@ -65,11 +65,23 @@ class MerchantController extends Controller
                 'status'     => 'active',
             ]);
 
-            // 5. Seed common nav items
-            $this->seedDefaultNavigation($hotel);
+            // 5. Seed common website structure defaults or custom products
+            if ($request->has('navigation_items') && is_array($request->navigation_items)) {
+                foreach ($request->navigation_items as $item) {
+                    $hotel->navigationItems()->create($item);
+                }
+            }
+            
+            if ($request->has('page_sections') && is_array($request->page_sections)) {
+                foreach ($request->page_sections as $section) {
+                    $hotel->pageSections()->create($section);
+                }
+            }
 
-            // 6. Seed common main page sections
-            $this->seedDefaultSections($hotel);
+            // Fallback to defaults if none provided
+            if (!$request->has('navigation_items') && !$request->has('page_sections')) {
+                $hotel->seedDefaults();
+            }
         });
 
         return ApiResponse::success(new MerchantResource($merchant->load('hotel', 'roles')), 'Merchant created successfully', 201);
@@ -99,6 +111,21 @@ class MerchantController extends Controller
                     'phone'      => $request->phone,
                     'status'     => $request->status,
                 ]));
+
+                // Optional: Update structure if provided
+                if ($request->has('navigation_items') && is_array($request->navigation_items)) {
+                    $admin->hotel->navigationItems()->delete();
+                    foreach ($request->navigation_items as $item) {
+                        $admin->hotel->navigationItems()->create($item);
+                    }
+                }
+
+                if ($request->has('page_sections') && is_array($request->page_sections)) {
+                    $admin->hotel->pageSections()->delete();
+                    foreach ($request->page_sections as $section) {
+                        $admin->hotel->pageSections()->create($section);
+                    }
+                }
             }
         });
 
@@ -114,54 +141,5 @@ class MerchantController extends Controller
         $admin->delete();
 
         return ApiResponse::success(null, 'Merchant deleted successfully');
-    }
-
-    /**
-     * Seed default navigation items for a new hotel
-     */
-    private function seedDefaultNavigation($hotel)
-    {
-        $defaults = [
-            ['label' => 'Home', 'url' => '/', 'order' => 1],
-            ['label' => 'Rooms', 'url' => '/rooms', 'order' => 2],
-            ['label' => 'Services', 'url' => '/services', 'order' => 3],
-            ['label' => 'About Us', 'url' => '/about', 'order' => 4],
-            ['label' => 'Contact', 'url' => '/contact', 'order' => 5],
-        ];
-
-        foreach ($defaults as $item) {
-            $hotel->navigationItems()->create($item);
-        }
-    }
-
-    /**
-     * Seed default page sections for a new hotel
-     */
-    private function seedDefaultSections($hotel)
-    {
-        $defaults = [
-            [
-                'section_name' => 'Hero',
-                'title' => 'Welcome to ' . $hotel->hotel_name,
-                'content' => 'Luxury and comfort in the heart of the city.',
-                'order' => 1,
-            ],
-            [
-                'section_name' => 'About',
-                'title' => 'Our Story',
-                'content' => 'We have been providing world-class hospitality since...',
-                'order' => 2,
-            ],
-            [
-                'section_name' => 'Services',
-                'title' => 'Our Premium Services',
-                'content' => 'From spa treatments to gourmet dining, we offer it all.',
-                'order' => 3,
-            ],
-        ];
-
-        foreach ($defaults as $section) {
-            $hotel->pageSections()->create($section);
-        }
     }
 }

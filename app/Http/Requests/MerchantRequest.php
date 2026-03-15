@@ -29,6 +29,15 @@ class MerchantRequest extends FormRequest
             'domain'     => 'nullable|string',
             'phone'      => 'required|string',
             'status'     => 'nullable|in:active,suspended',
+            'navigation_items' => 'nullable|array',
+            'navigation_items.*.label' => 'required|string',
+            'navigation_items.*.url' => 'nullable|string',
+            'navigation_items.*.order' => 'required|integer',
+            'page_sections' => 'nullable|array',
+            'page_sections.*.section_name' => 'required|string',
+            'page_sections.*.title' => 'nullable|string',
+            'page_sections.*.content' => 'nullable|string',
+            'page_sections.*.order' => 'required|integer',
         ];
     }
 }
