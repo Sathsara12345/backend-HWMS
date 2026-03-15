@@ -31,6 +31,17 @@ class MerchantResource extends JsonResource
             'roles'      => $this->whenLoaded('roles', function () {
                 return $this->roles->pluck('name');
             }),
+            'navigation_items' => $this->whenLoaded('hotel', function() {
+                return $this->hotel->navigationItems;
+            }),
+            'page_sections' => $this->whenLoaded('hotel', function() {
+                return $this->hotel->pageSections;
+            }),
+            'permissions' => [
+                'direct' => $this->getDirectPermissions()->pluck('name'),
+                'roles'  => $this->getPermissionsViaRoles()->pluck('name'),
+                'all'    => $this->getAllPermissions()->pluck('name'),
+            ],
         ];
     }
 }

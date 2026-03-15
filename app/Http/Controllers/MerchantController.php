@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Hotel;
 use Illuminate\Support\Str;
+use App\Models\PageSection;
 use Illuminate\Http\Request;
+use App\Models\NavigationItem;
 use Illuminate\Support\Facades\DB;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Support\Facades\Hash;
@@ -51,14 +53,23 @@ class MerchantController extends Controller
             // 2. Assign admin role
             $merchant->assignRole('admin');
 
-            // 3. Create hotel record linked to this user
-            $merchant->hotel()->create([
+            // 3. Assign common permissions
+            $merchant->givePermissionTo('view-dashboard');
+
+            // 4. Create hotel record linked to this user
+            $hotel = $merchant->hotel()->create([
                 'hotel_name' => $request->hotel_name,
                 'domain'     => $request->domain,
                 'email'      => $request->email,
                 'phone'      => $request->phone,
                 'status'     => 'active',
             ]);
+
+            // 5. Seed common nav items
+            $this->seedDefaultNavigation($hotel);
+
+            // 6. Seed common main page sections
+            $this->seedDefaultSections($hotel);
         });
 
         return ApiResponse::success(new MerchantResource($merchant->load('hotel', 'roles')), 'Merchant created successfully', 201);
@@ -103,5 +114,54 @@ class MerchantController extends Controller
         $admin->delete();
 
         return ApiResponse::success(null, 'Merchant deleted successfully');
+    }
+
+    /**
+     * Seed default navigation items for a new hotel
+     */
+    private function seedDefaultNavigation($hotel)
+    {
+        $defaults = [
+            ['label' => 'Home', 'url' => '/', 'order' => 1],
+            ['label' => 'Rooms', 'url' => '/rooms', 'order' => 2],
+            ['label' => 'Services', 'url' => '/services', 'order' => 3],
+            ['label' => 'About Us', 'url' => '/about', 'order' => 4],
+            ['label' => 'Contact', 'url' => '/contact', 'order' => 5],
+        ];
+
+        foreach ($defaults as $item) {
+            $hotel->navigationItems()->create($item);
+        }
+    }
+
+    /**
+     * Seed default page sections for a new hotel
+     */
+    private function seedDefaultSections($hotel)
+    {
+        $defaults = [
+            [
+                'section_name' => 'Hero',
+                'title' => 'Welcome to ' . $hotel->hotel_name,
+                'content' => 'Luxury and comfort in the heart of the city.',
+                'order' => 1,
+            ],
+            [
+                'section_name' => 'About',
+                'title' => 'Our Story',
+                'content' => 'We have been providing world-class hospitality since...',
+                'order' => 2,
+            ],
+            [
+                'section_name' => 'Services',
+                'title' => 'Our Premium Services',
+                'content' => 'From spa treatments to gourmet dining, we offer it all.',
+                'order' => 3,
+            ],
+        ];
+
+        foreach ($defaults as $section) {
+            $hotel->pageSections()->create($section);
+        }
     }
 }
