@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\UserManagement;
 
 use App\Http\Controllers\Controller;
-use app\Models\User;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use App\Http\Responses\ApiResponse;
@@ -54,37 +54,43 @@ class RoleController extends Controller
         return ApiResponse::success(PermissionResource::collection($permissions), 'Permissions retrieved successfully');
     }
 
+    /**
+     * Assign common permissions to a role
+     */
     public function assignPermissions(Request $request, Role $role)
     {
         $request->validate([
-            'permissions' => 'required|array',
+            'permissions' => 'present|array',
         ]);
 
+        // Sync permissions directly to the role
         $role->syncPermissions($request->permissions);
 
-        return ApiResponse::success(new RoleResource($role->load('permissions')), 'Permissions assigned successfully');
+        return ApiResponse::success(new RoleResource($role->load('permissions')), 'Common permissions updated for ' . $role->name . ' role');
     }
 
+    /**
+     * Assign user-specific permissions
+     */
     public function assignPermissionsToUser(Request $request, $userId)
-{
-    $request->validate([
-        'permissions' => 'required|array',
-    ]);
+    {
+        $request->validate([
+            'permissions' => 'present|array',
+        ]);
 
-    $user = User::find($userId);
-    if (!$user) {
-        return ApiResponse::error('User not found', 404);
+        $user = User::find($userId);
+        if (!$user) {
+            return ApiResponse::error('User not found', 404);
+        }
+
+        // Sync permissions directly to the user
+        $user->syncPermissions($request->permissions);
+
+        return ApiResponse::success([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'direct_permissions' => PermissionResource::collection($user->permissions),
+            'all_permissions' => PermissionResource::collection($user->getAllPermissions()),
+        ], 'User-specific permissions assigned successfully');
     }
-
-    // Sync permissions directly to the user (replaces any existing user-specific permissions)
-    $user->syncPermissions($request->permissions);
-
-    // Load permissions for the response (optional, for consistency with role method)
-    $user->load('permissions');
-
-    return ApiResponse::success([
-        'user_id' => $user->id,
-        'permissions' => PermissionResource::collection($user->permissions),
-    ], 'Permissions assigned to user successfully');
-}
 }
