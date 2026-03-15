@@ -26,7 +26,11 @@ class UserResource extends JsonResource
                     ];
                 });
             }),
-            'permissions' => PermissionResource::collection($this->whenLoaded('permissions')),
+            'permissions' => [
+                'direct' => $this->getDirectPermissions()->pluck('name'),
+                'via_roles' => $this->getPermissionsViaRoles()->pluck('name'),
+                'all' => $this->getAllPermissions()->pluck('name'),
+            ],
         ];
     }
 }

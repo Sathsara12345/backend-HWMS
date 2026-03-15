@@ -14,9 +14,19 @@ class LoginResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $user = $this->resource['user'];
         return [
-            'user' => $this->resource['user'],
-            'permissions' => $this->resource['permissions'],
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name'),
+            ],
+            'permissions' => [
+                'direct' => $user->getDirectPermissions()->pluck('name'),
+                'roles' => $user->getPermissionsViaRoles()->pluck('name'),
+                'all' => $user->getAllPermissions()->pluck('name'),
+            ],
             'token' => $this->resource['token'],
         ];
     }
