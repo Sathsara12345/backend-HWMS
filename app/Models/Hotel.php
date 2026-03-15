@@ -8,9 +8,18 @@ class Hotel extends Model
 {
     protected $guarded = [];
 
-    // hotel belongs to a user (the admin account)
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function navigationItems()
+    {
+        return $this->hasMany(NavigationItem::class);
+    }
+
+    public function pageSections()
+    {
+        return $this->hasMany(PageSection::class);
     }
 }
