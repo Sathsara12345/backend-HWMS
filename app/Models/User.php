@@ -48,7 +48,7 @@ class User extends Authenticatable implements JWTSubject
     }
         public function hotel()
     {
-        return $this->hasOne(Hotel::class);
+        return $this->hasOne(Hotel::class, 'user_id', 'id');
     }
 
     protected function casts(): array

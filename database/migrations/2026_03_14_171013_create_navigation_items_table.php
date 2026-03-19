@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('navigation_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('hotel_id')->constrained()->onDelete('cascade');
+            $table->foreignId('hotel_id')->constrained('hotels')->cascadeOnDelete();
             $table->string('label');
-            $table->string('url')->nullable();
-            $table->integer('order')->default(0);
+            $table->string('url');
+            $table->unsignedInteger('order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index(['hotel_id', 'order']);
+            $table->index(['hotel_id', 'is_active']);
         });
     }
 
