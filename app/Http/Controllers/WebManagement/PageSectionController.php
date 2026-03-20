@@ -14,19 +14,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PageSectionController extends Controller
 {
-    // ─── GET /api/hotels/{hotel}/sections ────────────────────
-    // Optional query params:
-    //   ?nav_id=5           → sections for a specific nav item
-    //   ?visible_only=true  → only is_visible = true
-    //   ?with_nav=true      → eager-load navigationItem
+    // ─── GET /v1/admin/merchants/{merchant}/sections ──────────────────────────
     public function index(Request $request, User $merchant): AnonymousResourceCollection
     {
         $hotel = $merchant->hotel;
         abort_if(!$hotel, 404, 'No hotel found for this merchant.');
-        
+
         $this->authorize('viewAny', [PageSection::class, $hotel->id]);
 
         $query = PageSection::forHotel($hotel->id)->ordered();
@@ -46,7 +43,23 @@ class PageSectionController extends Controller
         return PageSectionResource::collection($query->get());
     }
 
-    // ─── POST /api/hotels/{hotel}/sections ───────────────────
+    // ─── POST /v1/admin/merchants/{merchant}/sections ─────────────────────────
+    // Accepts text fields + optional media files in one request (multipart/form-data)
+    //
+    // Form fields:
+    //   navigation_item_id  (optional)
+    //   section_name        (required)
+    //   title               (optional)
+    //   content             (optional)
+    //   order               (optional)
+    //   is_visible          (optional, default true)
+    //   settings            (optional, JSON string)
+    //
+    // File fields (all optional):
+    //   media[video]        → stored as settings.video
+    //   media[image]        → stored as settings.image
+    //   media[banner]       → stored as settings.banner
+    //   media[*]            → any key you need
     public function store(StorePageSectionRequest $request, User $merchant): PageSectionResource
     {
         $hotel = $merchant->hotel;
@@ -54,7 +67,6 @@ class PageSectionController extends Controller
 
         $this->authorize('create', [PageSection::class, $hotel->id]);
 
-        // Ensure the nav item (if given) belongs to the same hotel
         if ($request->filled('navigation_item_id')) {
             $this->validateNavBelongsToHotel($request->input('navigation_item_id'), $hotel->id);
         }
@@ -64,16 +76,23 @@ class PageSectionController extends Controller
             PageSection::forHotel($hotel->id)->max('order') + 1
         );
 
+        // Parse settings — frontend may send as JSON string or array
+        $settings = $this->parseSettings($request->input('settings'));
+
+        // Upload any media files sent along with the creation request
+        $settings = $this->handleMediaUploads($request, $settings, $hotel->id, $request->input('section_name'));
+
         $section = PageSection::create([
             ...$request->validated(),
             'hotel_id' => $hotel->id,
             'order'    => $order,
+            'settings' => $settings,
         ]);
 
         return new PageSectionResource($section->load('navigationItem'));
     }
 
-    // ─── GET /api/sections/{pageSection} ─────────────────────
+    // ─── GET /v1/admin/sections/{pageSection} ─────────────────────────────────
     public function show(PageSection $pageSection): PageSectionResource
     {
         $this->authorize('view', $pageSection);
@@ -81,7 +100,8 @@ class PageSectionController extends Controller
         return new PageSectionResource($pageSection->load('navigationItem'));
     }
 
-    // ─── PUT /api/sections/{pageSection} ─────────────────────
+    // ─── PUT /v1/admin/sections/{pageSection} ─────────────────────────────────
+    // Same multipart support as store — send text + files together
     public function update(UpdatePageSectionRequest $request, PageSection $pageSection): PageSectionResource
     {
         $this->authorize('update', $pageSection);
@@ -90,22 +110,104 @@ class PageSectionController extends Controller
             $this->validateNavBelongsToHotel($request->input('navigation_item_id'), $pageSection->hotel_id);
         }
 
-        $pageSection->update($request->validated());
+        // Start from existing settings so we don't wipe keys not being updated
+        $settings = $pageSection->settings ?? [];
 
-        return new PageSectionResource($pageSection->load('navigationItem'));
+        // Merge any new settings fields from the request
+        if ($request->filled('settings')) {
+            $incoming = $this->parseSettings($request->input('settings'));
+            $settings = array_merge($settings, $incoming);
+        }
+
+        // Handle new media uploads — replaces old file for same key
+        $settings = $this->handleMediaUploads(
+            $request,
+            $settings,
+            $pageSection->hotel_id,
+            $pageSection->section_name
+        );
+
+        $pageSection->update([
+            ...$request->validated(),
+            'settings' => $settings,
+        ]);
+
+        return new PageSectionResource($pageSection->fresh()->load('navigationItem'));
     }
 
-    // ─── PATCH /api/sections/{pageSection}/visibility ────────
+    // ─── POST /v1/admin/sections/{pageSection}/media ──────────────────────────
+    // Upload or replace a single media file on an existing section
+    //
+    // Body: multipart/form-data
+    //   file  (required) — the file to upload
+    //   key   (required) — e.g. "video", "image", "banner"
+    public function uploadMedia(Request $request, PageSection $pageSection): JsonResponse
+    {
+        $this->authorize('update', $pageSection);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:102400'], // 100MB
+            'key'  => ['required', 'string', 'max:50'],
+        ]);
+
+        $key      = $request->input('key');
+        $settings = $pageSection->settings ?? [];
+
+        // Delete old file for this key if it exists
+        if (!empty($settings[$key])) {
+            Storage::disk('public')->delete($settings[$key]);
+        }
+
+        $path = $request->file('file')->store(
+            "hotels/{$pageSection->hotel_id}/{$pageSection->section_name}",
+            'public'
+        );
+
+        $settings[$key] = $path;
+        $pageSection->update(['settings' => $settings]);
+
+        return response()->json([
+            'message' => 'Media uploaded successfully.',
+            'key'     => $key,
+            'url'     => Storage::url($path),
+            'section' => new PageSectionResource($pageSection->fresh()),
+        ]);
+    }
+
+    // ─── DELETE /v1/admin/sections/{pageSection}/media/{key} ──────────────────
+    // Remove a specific media file from a section
+    public function deleteMedia(PageSection $pageSection, string $key): JsonResponse
+    {
+        $this->authorize('update', $pageSection);
+
+        $settings = $pageSection->settings ?? [];
+
+        if (empty($settings[$key])) {
+            return response()->json(['message' => "No media found for key '{$key}'."], 404);
+        }
+
+        Storage::disk('public')->delete($settings[$key]);
+
+        unset($settings[$key]);
+        $pageSection->update(['settings' => $settings]);
+
+        return response()->json([
+            'message' => "'{$key}' removed successfully.",
+            'section' => new PageSectionResource($pageSection->fresh()),
+        ]);
+    }
+
+    // ─── PATCH /v1/admin/sections/{pageSection}/visibility ───────────────────
     public function toggleVisibility(PageSection $pageSection): PageSectionResource
     {
         $this->authorize('update', $pageSection);
 
-        $pageSection->update(['is_visible' => ! $pageSection->is_visible]);
+        $pageSection->update(['is_visible' => !$pageSection->is_visible]);
 
         return new PageSectionResource($pageSection);
     }
 
-    // ─── PATCH /api/hotels/{hotel}/sections/reorder ──────────
+    // ─── PATCH /v1/admin/merchants/{merchant}/sections/reorder ───────────────
     public function reorder(ReorderRequest $request, User $merchant): JsonResponse
     {
         $hotel = $merchant->hotel;
@@ -132,18 +234,75 @@ class PageSectionController extends Controller
         return response()->json(['message' => 'Sections reordered.']);
     }
 
-    // ─── DELETE /api/sections/{pageSection} ──────────────────
+    // ─── DELETE /v1/admin/sections/{pageSection} ─────────────────────────────
     public function destroy(PageSection $pageSection): JsonResponse
     {
         $this->authorize('delete', $pageSection);
+
+        // Clean up all media files for this section
+        $this->deleteAllSectionMedia($pageSection);
 
         $pageSection->delete();
 
         return response()->json(['message' => 'Section deleted.'], 200);
     }
 
-    // ─── Helpers ─────────────────────────────────────────────
+    // ─── Private Helpers ──────────────────────────────────────────────────────
 
+    /**
+     * Handle media[] file uploads from a request.
+     * Expects files under media[video], media[image], media[banner], etc.
+     * Replaces existing file for the same key.
+     */
+    private function handleMediaUploads(Request $request, array $settings, int $hotelId, string $sectionName): array
+    {
+        if (!$request->hasFile('media')) {
+            return $settings;
+        }
+
+        foreach ($request->file('media') as $key => $file) {
+            if (!$file->isValid()) continue;
+
+            // Delete old file if replacing
+            if (!empty($settings[$key])) {
+                Storage::disk('public')->delete($settings[$key]);
+            }
+
+            $path = $file->store("hotels/{$hotelId}/{$sectionName}", 'public');
+            $settings[$key] = $path;
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Parse settings — accepts JSON string or array.
+     */
+    private function parseSettings(mixed $settings): array
+    {
+        if (is_array($settings)) return $settings;
+        if (is_string($settings)) return json_decode($settings, true) ?? [];
+        return [];
+    }
+
+    /**
+     * Delete all stored media files when a section is deleted.
+     */
+    private function deleteAllSectionMedia(PageSection $pageSection): void
+    {
+        $settings = $pageSection->settings ?? [];
+        $mediaKeys = ['video', 'image', 'banner', 'poster', 'background'];
+
+        foreach ($mediaKeys as $key) {
+            if (!empty($settings[$key])) {
+                Storage::disk('public')->delete($settings[$key]);
+            }
+        }
+    }
+
+    /**
+     * Ensure the navigation item belongs to the same hotel.
+     */
     private function validateNavBelongsToHotel(int $navId, int $hotelId): void
     {
         $exists = \App\Models\NavigationItem::where('id', $navId)

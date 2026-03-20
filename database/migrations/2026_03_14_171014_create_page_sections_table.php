@@ -23,7 +23,7 @@ return new class extends Migration
             $table->longText('content')->nullable();
             $table->unsignedInteger('order')->default(0);
             $table->boolean('is_visible')->default(true);
-            $table->string('settings', 500)->nullable();
+            $table->json('settings')->nullable();
             $table->timestamps();
 
             $table->index(['hotel_id', 'order']);
