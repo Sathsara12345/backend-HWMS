@@ -35,26 +35,28 @@ Route::prefix('v1')->group(function () {
         Route::prefix('merchants/{merchant}')->group(function () {
  
                 // Navigation items
-                Route::get   ('navigation',         [NavigationItemController::class, 'index']);
-                Route::post  ('navigation',         [NavigationItemController::class, 'store']);
+                Route::get   ('navigation', [NavigationItemController::class, 'index']);
+                Route::post  ('navigation', [NavigationItemController::class, 'store']);
                 Route::patch ('navigation/reorder', [NavigationItemController::class, 'reorder']);
     
                 // Page sections
-                Route::get   ('sections',           [PageSectionController::class, 'index']);
-                Route::post  ('sections',           [PageSectionController::class, 'store']);
-                Route::patch ('sections/reorder',   [PageSectionController::class, 'reorder']);
+                Route::get   ('sections', [PageSectionController::class, 'index']);
+                Route::post  ('sections', [PageSectionController::class, 'store']);
+                Route::patch ('sections/reorder', [PageSectionController::class, 'reorder']);
             });
     
             // Single-resource routes (no merchant prefix needed — ID is in the model)
-            Route::get   ('navigation/{navigationItem}',        [NavigationItemController::class, 'show']);
-            Route::put   ('navigation/{navigationItem}',        [NavigationItemController::class, 'update']);
+            Route::get   ('navigation/{navigationItem}', [NavigationItemController::class, 'show']);
+            Route::put   ('navigation/{navigationItem}', [NavigationItemController::class, 'update']);
             Route::patch ('navigation/{navigationItem}/toggle', [NavigationItemController::class, 'toggle']);
-            Route::delete('navigation/{navigationItem}',        [NavigationItemController::class, 'destroy']);
+            Route::delete('navigation/{navigationItem}', [NavigationItemController::class, 'destroy']);
     
-            Route::get   ('sections/{pageSection}',            [PageSectionController::class, 'show']);
-            Route::put   ('sections/{pageSection}',            [PageSectionController::class, 'update']);
+            Route::get   ('sections/{pageSection}', [PageSectionController::class, 'show']);
+            Route::put   ('sections/{pageSection}', [PageSectionController::class, 'update']);
             Route::patch ('sections/{pageSection}/visibility', [PageSectionController::class, 'toggleVisibility']);
-            Route::delete('sections/{pageSection}',            [PageSectionController::class, 'destroy']);
+            Route::post  ('sections/{pageSection}/media', [PageSectionController::class, 'uploadMedia']);
+            Route::delete('sections/{pageSection}/media/{key}', [PageSectionController::class, 'deleteMedia']);
+            Route::delete('sections/{pageSection}', [PageSectionController::class, 'destroy']);
 
             // User management
             Route::middleware(['role:super-admin'])->group(function () {
