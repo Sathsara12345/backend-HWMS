@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\WebManagement;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\WebManagement\ReorderRequest;
-use App\Http\Requests\WebManagement\StorePageSectionRequest;
-use App\Http\Requests\WebManagement\UpdatePageSectionRequest;
-use App\Http\Resources\WebManagement\PageSectionResource;
 use App\Models\Hotel;
 use App\Models\User;
 use App\Models\PageSection;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Requests\WebManagement\ReorderRequest;
+use App\Http\Requests\WebManagement\PageSectionRequest;
+use App\Http\Resources\WebManagement\PageSectionResource;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PageSectionController extends Controller
 {
@@ -44,23 +43,7 @@ class PageSectionController extends Controller
     }
 
     // ─── POST /v1/admin/merchants/{merchant}/sections ─────────────────────────
-    // Accepts text fields + optional media files in one request (multipart/form-data)
-    //
-    // Form fields:
-    //   navigation_item_id  (optional)
-    //   section_name        (required)
-    //   title               (optional)
-    //   content             (optional)
-    //   order               (optional)
-    //   is_visible          (optional, default true)
-    //   settings            (optional, JSON string)
-    //
-    // File fields (all optional):
-    //   media[video]        → stored as settings.video
-    //   media[image]        → stored as settings.image
-    //   media[banner]       → stored as settings.banner
-    //   media[*]            → any key you need
-    public function store(StorePageSectionRequest $request, User $merchant): PageSectionResource
+    public function store(PageSectionRequest $request, User $merchant): PageSectionResource
     {
         $hotel = $merchant->hotel;
         abort_if(!$hotel, 404, 'No hotel found for this merchant.');
@@ -102,7 +85,7 @@ class PageSectionController extends Controller
 
     // ─── PUT /v1/admin/sections/{pageSection} ─────────────────────────────────
     // Same multipart support as store — send text + files together
-    public function update(UpdatePageSectionRequest $request, PageSection $pageSection): PageSectionResource
+    public function update(PageSectionRequest $request, PageSection $pageSection): PageSectionResource
     {
         $this->authorize('update', $pageSection);
 
@@ -136,11 +119,6 @@ class PageSectionController extends Controller
     }
 
     // ─── POST /v1/admin/sections/{pageSection}/media ──────────────────────────
-    // Upload or replace a single media file on an existing section
-    //
-    // Body: multipart/form-data
-    //   file  (required) — the file to upload
-    //   key   (required) — e.g. "video", "image", "banner"
     public function uploadMedia(Request $request, PageSection $pageSection): JsonResponse
     {
         $this->authorize('update', $pageSection);
@@ -175,7 +153,6 @@ class PageSectionController extends Controller
     }
 
     // ─── DELETE /v1/admin/sections/{pageSection}/media/{key} ──────────────────
-    // Remove a specific media file from a section
     public function deleteMedia(PageSection $pageSection, string $key): JsonResponse
     {
         $this->authorize('update', $pageSection);
@@ -248,12 +225,6 @@ class PageSectionController extends Controller
     }
 
     // ─── Private Helpers ──────────────────────────────────────────────────────
-
-    /**
-     * Handle media[] file uploads from a request.
-     * Expects files under media[video], media[image], media[banner], etc.
-     * Replaces existing file for the same key.
-     */
     private function handleMediaUploads(Request $request, array $settings, int $hotelId, string $sectionName): array
     {
         if (!$request->hasFile('media')) {
