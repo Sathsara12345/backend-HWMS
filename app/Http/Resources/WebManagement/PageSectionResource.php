@@ -16,37 +16,34 @@ class PageSectionResource extends JsonResource
             'navigation_item_id' => $this->navigation_item_id,
             'section_name'       => $this->section_name,
             'title'              => $this->title,
+            'sub_title'          => $this->sub_title,
             'content'            => $this->content,
             'order'              => $this->order,
             'is_visible'         => $this->is_visible,
-            'settings'           => $this->settings,
-
-            // Media URLs — resolved from settings paths to full public URLs
-            // Frontend can use these directly without building URLs manually
-            'media'              => $this->resolveMediaUrls($this->settings ?? []),
-
+            'image_url'          => $this->image_url,
+            'video_url'          => $this->video_url,
+            'banner_url'         => $this->banner_url,
+            'poster_url'         => $this->poster_url,
+            'background_url'     => $this->background_url,
+            'media_urls'         => $this->resolveMediaUrls(),
             'navigation_item'    => new NavigationItemResource(
                                         $this->whenLoaded('navigationItem')
                                     ),
-            'created_at'         => $this->created_at?->toISOString(),
-            'updated_at'         => $this->updated_at?->toISOString(),
         ];
     }
 
     /**
-     * Convert stored file paths in settings into full public URLs.
-     * 
-     * settings.video  = "hotels/1/hero/abc.mp4"
-     * media.video_url = "http://yourdomain.com/storage/hotels/1/hero/abc.mp4"
+     * Convert stored file columns into full public URLs.
      */
-    private function resolveMediaUrls(array $settings): array
+    private function resolveMediaUrls(): array
     {
-        $mediaKeys = ['video', 'image', 'banner', 'poster', 'background'];
+        $mediaKeys = ['image', 'video', 'banner', 'poster', 'background'];
         $urls = [];
 
         foreach ($mediaKeys as $key) {
-            if (!empty($settings[$key])) {
-                $urls["{$key}_url"] = Storage::url($settings[$key]);
+            $column = "{$key}_url";
+            if (!empty($this->$column)) {
+                $urls["{$key}_url"] = Storage::url($this->$column);
             }
         }
 

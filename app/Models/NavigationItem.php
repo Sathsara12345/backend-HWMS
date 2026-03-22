@@ -9,18 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class NavigationItem extends Model
 {
-    protected $fillable = [
-        'hotel_id',
-        'label',
-        'url',
-        'order',
-        'is_active',
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
-        'order'     => 'integer',
-    ];
+    protected $guarded = [];
 
     // ─── Relationships ────────────────────────────────────────
 

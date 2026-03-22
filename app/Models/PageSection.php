@@ -8,23 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class PageSection extends Model
 {
-    protected $fillable = [
-        'hotel_id',
-        'navigation_item_id',
-        'section_name',
-        'title',
-        'content',
-        'order',
-        'is_visible',
-        'settings',
-    ];
-
-    protected $casts = [
-        'is_visible'          => 'boolean',
-        'order'               => 'integer',
-        'settings'            => 'array',
-        'navigation_item_id'  => 'integer',
-    ];
+    protected $guarded = [];
 
     // ─── Relationships ────────────────────────────────────────
 

@@ -1,20 +1,21 @@
 <?php
 
 namespace App\Http\Controllers\WebManagement;
-
+ 
 use App\Models\Hotel;
 use App\Models\User;
 use App\Models\PageSection;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\WebManagement\ReorderRequest;
 use App\Http\Requests\WebManagement\PageSectionRequest;
 use App\Http\Resources\WebManagement\PageSectionResource;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-
+ 
 class PageSectionController extends Controller
 {
     // ─── GET /v1/admin/merchants/{merchant}/sections ──────────────────────────
@@ -59,18 +60,18 @@ class PageSectionController extends Controller
             PageSection::forHotel($hotel->id)->max('order') + 1
         );
 
-        // Parse settings — frontend may send as JSON string or array
-        $settings = $this->parseSettings($request->input('settings'));
+        // Extract only valid asset columns from current request state if persisting directly or keep empty
+        // Media handled below natively
+        $urls = $this->handleMediaUploads($request, $hotel->id, $request->input('section_name'));
 
-        // Upload any media files sent along with the creation request
-        $settings = $this->handleMediaUploads($request, $settings, $hotel->id, $request->input('section_name'));
-
-        $section = PageSection::create([
-            ...$request->validated(),
-            'hotel_id' => $hotel->id,
-            'order'    => $order,
-            'settings' => $settings,
-        ]);
+        $section = PageSection::create(array_merge(
+            $request->safe()->except(['media']),
+            $urls,
+            [
+                'hotel_id' => $hotel->id,
+                'order'    => $order,
+            ]
+        ));
 
         return new PageSectionResource($section->load('navigationItem'));
     }
@@ -93,27 +94,18 @@ class PageSectionController extends Controller
             $this->validateNavBelongsToHotel($request->input('navigation_item_id'), $pageSection->hotel_id);
         }
 
-        // Start from existing settings so we don't wipe keys not being updated
-        $settings = $pageSection->settings ?? [];
-
-        // Merge any new settings fields from the request
-        if ($request->filled('settings')) {
-            $incoming = $this->parseSettings($request->input('settings'));
-            $settings = array_merge($settings, $incoming);
-        }
-
-        // Handle new media uploads — replaces old file for same key
-        $settings = $this->handleMediaUploads(
+        // Handle new media uploads — replaces old file for same key directly on storage disk
+        $urls = $this->handleMediaUploads(
             $request,
-            $settings,
             $pageSection->hotel_id,
-            $pageSection->section_name
+            $pageSection->section_name,
+            $pageSection
         );
 
-        $pageSection->update([
-            ...$request->validated(),
-            'settings' => $settings,
-        ]);
+        $pageSection->update(array_merge(
+            $request->safe()->except(['media']),
+            $urls
+        ));
 
         return new PageSectionResource($pageSection->fresh()->load('navigationItem'));
     }
@@ -123,26 +115,39 @@ class PageSectionController extends Controller
     {
         $this->authorize('update', $pageSection);
 
+        $key = $request->input('key');
+        $is_video = $key === 'video';
+        $max_size = $is_video ? 10240 : 5120;
+
         $request->validate([
-            'file' => ['required', 'file', 'max:102400'], // 100MB
+            'file' => ['required', 'file', "max:{$max_size}"],
             'key'  => ['required', 'string', 'max:50'],
         ]);
 
-        $key      = $request->input('key');
-        $settings = $pageSection->settings ?? [];
-
-        // Delete old file for this key if it exists
-        if (!empty($settings[$key])) {
-            Storage::disk('public')->delete($settings[$key]);
+        if (!in_array($key, ['image', 'video', 'banner', 'poster', 'background'])) {
+            return response()->json(['message' => "Invalid media key '{$key}'."], 422);
         }
 
-        $path = $request->file('file')->store(
+        $column = "{$key}_url";
+
+        // Delete old file for this key if it exists
+        if (!empty($pageSection->$column)) {
+            Storage::disk('public')->delete($pageSection->$column);
+        }
+
+        $hotel = $pageSection->hotel;
+        $timestamp = now()->format('Y-m-d_His');
+        $hotelSlug = Str::slug($hotel->hotel_name ?? 'hotel');
+        $extension = $request->file('file')->getClientOriginalExtension();
+        $filename = "{$hotelSlug}_{$key}_{$timestamp}.{$extension}";
+
+        $path = $request->file('file')->storeAs(
             "hotels/{$pageSection->hotel_id}/{$pageSection->section_name}",
+            $filename,
             'public'
         );
 
-        $settings[$key] = $path;
-        $pageSection->update(['settings' => $settings]);
+        $pageSection->update([$column => $path]);
 
         return response()->json([
             'message' => 'Media uploaded successfully.',
@@ -157,16 +162,18 @@ class PageSectionController extends Controller
     {
         $this->authorize('update', $pageSection);
 
-        $settings = $pageSection->settings ?? [];
+        if (!in_array($key, ['image', 'video', 'banner', 'poster', 'background'])) {
+            return response()->json(['message' => "Invalid media key '{$key}'."], 422);
+        }
 
-        if (empty($settings[$key])) {
+        $column = "{$key}_url";
+
+        if (empty($pageSection->$column)) {
             return response()->json(['message' => "No media found for key '{$key}'."], 404);
         }
 
-        Storage::disk('public')->delete($settings[$key]);
-
-        unset($settings[$key]);
-        $pageSection->update(['settings' => $settings]);
+        Storage::disk('public')->delete($pageSection->$column);
+        $pageSection->update([$column => null]);
 
         return response()->json([
             'message' => "'{$key}' removed successfully.",
@@ -225,35 +232,38 @@ class PageSectionController extends Controller
     }
 
     // ─── Private Helpers ──────────────────────────────────────────────────────
-    private function handleMediaUploads(Request $request, array $settings, int $hotelId, string $sectionName): array
+    private function handleMediaUploads(Request $request, int $hotelId, string $sectionName, ?PageSection $existingSection = null): array
     {
+        $urls = [];
+
         if (!$request->hasFile('media')) {
-            return $settings;
+            return $urls;
         }
+
+        // Fetch hotel for naming if possible
+        $hotel = Hotel::find($hotelId);
+        $hotelSlug = Str::slug($hotel->hotel_name ?? 'hotel');
+        $timestamp = now()->format('Y-m-d_His');
 
         foreach ($request->file('media') as $key => $file) {
             if (!$file->isValid()) continue;
+            if (!in_array($key, ['image', 'video', 'banner', 'poster', 'background'])) continue;
+
+            $column = "{$key}_url";
 
             // Delete old file if replacing
-            if (!empty($settings[$key])) {
-                Storage::disk('public')->delete($settings[$key]);
+            if ($existingSection && !empty($existingSection->$column)) {
+                Storage::disk('public')->delete($existingSection->$column);
             }
 
-            $path = $file->store("hotels/{$hotelId}/{$sectionName}", 'public');
-            $settings[$key] = $path;
+            $extension = $file->getClientOriginalExtension();
+            $filename = "{$hotelSlug}_{$key}_{$timestamp}.{$extension}";
+
+            $path = $file->storeAs("hotels/{$hotelId}/{$sectionName}", $filename, 'public');
+            $urls[$column] = $path;
         }
 
-        return $settings;
-    }
-
-    /**
-     * Parse settings — accepts JSON string or array.
-     */
-    private function parseSettings(mixed $settings): array
-    {
-        if (is_array($settings)) return $settings;
-        if (is_string($settings)) return json_decode($settings, true) ?? [];
-        return [];
+        return $urls;
     }
 
     /**
@@ -261,12 +271,11 @@ class PageSectionController extends Controller
      */
     private function deleteAllSectionMedia(PageSection $pageSection): void
     {
-        $settings = $pageSection->settings ?? [];
-        $mediaKeys = ['video', 'image', 'banner', 'poster', 'background'];
+        $columns = ['video_url', 'image_url', 'banner_url', 'poster_url', 'background_url'];
 
-        foreach ($mediaKeys as $key) {
-            if (!empty($settings[$key])) {
-                Storage::disk('public')->delete($settings[$key]);
+        foreach ($columns as $column) {
+            if (!empty($pageSection->$column)) {
+                Storage::disk('public')->delete($pageSection->$column);
             }
         }
     }

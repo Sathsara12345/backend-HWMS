@@ -20,8 +20,6 @@ class NavigationItemResource extends JsonResource
             'sections'    => PageSectionResource::collection(
                                 $this->whenLoaded('pageSections')
                              ),
-            'created_at'  => $this->created_at?->toISOString(),
-            'updated_at'  => $this->updated_at?->toISOString(),
         ];
     }
 }
