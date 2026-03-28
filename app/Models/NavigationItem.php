@@ -3,15 +3,35 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 
 class NavigationItem extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'hotel_id',
+        'label',
+        'slug',
+        'url',
+        'order',
+        'is_active',
+        // SEO
+        'meta_title',
+        'meta_description',
+        'meta_keywords',
+        'og_title',
+        'og_description',
+        'og_image',
+        'canonical_url',
+        'is_indexable',
+    ];
 
-    // ─── Relationships ────────────────────────────────────────
+    protected $casts = [
+        'is_active'    => 'boolean',
+        'is_indexable' => 'boolean',
+        'order'        => 'integer',
+    ];
 
     public function hotel(): BelongsTo
     {
@@ -22,8 +42,6 @@ class NavigationItem extends Model
     {
         return $this->hasMany(PageSection::class)->orderBy('order');
     }
-
-    // ─── Scopes ───────────────────────────────────────────────
 
     public function scopeForHotel(Builder $query, int $hotelId): Builder
     {

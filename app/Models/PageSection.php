@@ -3,14 +3,29 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PageSection extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'hotel_id',
+        'navigation_item_id',
+        'section_name',
+        'section_key',
+        'template_id',
+        'data_source',
+        'order',
+        'is_visible',
+        'settings',
+    ];
 
-    // ─── Relationships ────────────────────────────────────────
+    protected $casts = [
+        'is_visible' => 'boolean',
+        'order'      => 'integer',
+        'settings'   => 'array',
+    ];
 
     public function hotel(): BelongsTo
     {
@@ -22,7 +37,15 @@ class PageSection extends Model
         return $this->belongsTo(NavigationItem::class);
     }
 
-    // ─── Scopes ───────────────────────────────────────────────
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(SectionTemplate::class, 'template_id');
+    }
+
+    public function contents(): HasMany
+    {
+        return $this->hasMany(SectionContent::class, 'section_id');
+    }
 
     public function scopeForHotel(Builder $query, int $hotelId): Builder
     {
