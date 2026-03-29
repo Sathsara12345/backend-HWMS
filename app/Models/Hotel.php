@@ -41,18 +41,34 @@ class Hotel extends Model
 
         // 2. Seed Page Sections if empty
         if ($this->pageSections()->count() === 0) {
+            $homeNav = $this->navigationItems()->where('label', 'Home')->first();
+            $homeId = $homeNav?->id;
+
             $this->pageSections()->createMany([
                 [
-                    'section_name' => 'Hero',
+                    'section_name' => 'hero',
+                    'navigation_item_id' => $homeId,
                     'order' => 1,
+                    'data_source' => 'static',
                 ],
                 [
-                    'section_name' => 'About',
+                    'section_name' => 'experience',
+                    'navigation_item_id' => $homeId,
                     'order' => 2,
+                    'data_source' => 'static',
                 ],
                 [
-                    'section_name' => 'Services',
+                    'section_name' => 'featured_rooms',
+                    'navigation_item_id' => $homeId,
                     'order' => 3,
+                    'data_source' => 'rooms',
+                    'settings' => ['limit' => 3]
+                ],
+                [
+                    'section_name' => 'booking_banner',
+                    'navigation_item_id' => $homeId,
+                    'order' => 4,
+                    'data_source' => 'static',
                 ],
             ]);
         }
