@@ -13,7 +13,7 @@ return new class extends Migration
 {
     Schema::create('hotels', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // ← links to users table
+        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
         $table->string('hotel_name');
         $table->string('domain')->unique()->nullable();
         $table->string('email')->unique();
