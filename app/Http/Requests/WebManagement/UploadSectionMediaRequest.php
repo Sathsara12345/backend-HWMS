@@ -3,6 +3,7 @@
 namespace App\Http\Requests\WebManagement;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Rules\FileTypeSize;
 
 class UploadSectionMediaRequest extends FormRequest
 {
@@ -17,8 +18,8 @@ class UploadSectionMediaRequest extends FormRequest
             'file' => [
                 'required',
                 'file',
-                'max:102400', // 100MB
                 'mimetypes:image/jpeg,image/png,image/webp,video/mp4,video/webm,video/ogg,video/x-matroska,video/quicktime',
+                new FileTypeSize(),
             ],
             'key' => ['required', 'string', 'max:100'],
         ];
@@ -26,9 +27,8 @@ class UploadSectionMediaRequest extends FormRequest
 
     public function messages(): array
     {
-        return [
+         return [
             'file.required'  => 'Please select a file to upload.',
-            'file.max'       => 'File must not exceed 100MB.',
             'file.mimetypes' => 'File must be an image (jpg, png, webp) or video (mp4, webm, mkv, mov).',
             'key.required'   => 'A field key is required (e.g. background_image, background_video).',
         ];
