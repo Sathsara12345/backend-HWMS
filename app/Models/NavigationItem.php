@@ -33,6 +33,20 @@ class NavigationItem extends Model
         'order'        => 'integer',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($item) {
+            if ($item->url === '/') {
+                $item->slug = 'home';
+            } else {
+                // Remove leading slash and any trailing/duplicate slashes
+                $item->slug = trim($item->url, '/');
+            }
+        });
+    }
+
     public function hotel(): BelongsTo
     {
         return $this->belongsTo(Hotel::class);

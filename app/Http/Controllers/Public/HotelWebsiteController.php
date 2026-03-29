@@ -114,7 +114,9 @@ class HotelWebsiteController extends Controller
             'og_title'         => $navItem->og_title          ?? $navItem->meta_title        ?? $hotel->hotel_name,
             'og_description'   => $navItem->og_description    ?? $navItem->meta_description  ?? null,
             'og_image'         => $navItem->og_image
-                                    ? Storage::url($navItem->og_image)
+                                    ? (str_starts_with(Storage::url($navItem->og_image), 'http') 
+                                        ? Storage::url($navItem->og_image) 
+                                        : config('app.url') . Storage::url($navItem->og_image))
                                     : null,
         ];
     }
@@ -140,7 +142,7 @@ class HotelWebsiteController extends Controller
             $value = match ($content->type) {
                 'json'           => json_decode($content->field_value, true),
                 'number'         => is_numeric($content->field_value) ? (float) $content->field_value : null,
-                'image', 'video' => $content->field_value ? Storage::url($content->field_value) : null,
+                'image', 'video' => $content->field_value ? (str_starts_with(Storage::url($content->field_value), 'http') ? Storage::url($content->field_value) : config('app.url') . Storage::url($content->field_value)) : null,
                 default          => $content->field_value,
             };
             return [$content->field_key => $value];
@@ -168,7 +170,7 @@ class HotelWebsiteController extends Controller
                 'description'  => $room->description,
                 'price'        => $room->price,
                 'images'       => collect($room->images ?? [])
-                                    ->map(fn($img) => Storage::url($img))
+                                    ->map(fn($img) => str_starts_with(Storage::url($img), 'http') ? Storage::url($img) : config('app.url') . Storage::url($img))
                                     ->toArray(),
                 'availability' => $room->availability,
             ])

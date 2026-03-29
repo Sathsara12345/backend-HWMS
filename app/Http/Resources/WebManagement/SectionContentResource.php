@@ -19,7 +19,9 @@ class SectionContentResource extends JsonResource
 
         // Append public URL for media fields
         if (in_array($this->type, ['image', 'video']) && $this->field_value) {
-            $data['url'] = Storage::url($this->field_value);
+            $url = Storage::url($this->field_value);
+            // Ensure absolute URL
+            $data['url'] = str_starts_with($url, 'http') ? $url : config('app.url') . $url;
         }
 
         return $data;
