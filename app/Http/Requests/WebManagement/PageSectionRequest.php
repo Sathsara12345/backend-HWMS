@@ -14,14 +14,13 @@ class PageSectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // ── Text fields ───────────────────────────────────────
+            // ── Core fields ───────────────────────────────────────
             'navigation_item_id' => ['nullable', 'integer', 'exists:navigation_items,id'],
             'section_name'       => ['required', 'string', 'max:255'],
-            'title'              => ['nullable', 'string', 'max:255'],
-            'sub_title'          => ['nullable', 'string', 'max:255'],
-            'content'            => ['nullable', 'string'],
+            'data_source'        => ['sometimes', 'string', 'max:50'],
             'order'              => ['sometimes', 'integer', 'min:0'],
             'is_visible'         => ['sometimes', 'boolean'],
+            'settings'           => ['sometimes', 'nullable', 'array'],
 
             // ── Media files (all optional) ──────────────
             'media'              => ['sometimes', 'array'],
