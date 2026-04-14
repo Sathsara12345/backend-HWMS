@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             WebsiteStructureSeeder::class,
             RolesAndPermissionsSeeder::class,
             MerchantSeeder::class,
+            HotelWebsiteSeeder::class,
         ]);
     }
 }
